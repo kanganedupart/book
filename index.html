@@ -278,31 +278,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans
 </div>
 
 <script>
-// ★★★ 여기에 본인의 API 키를 입력하세요 ★★★
 const API_KEY = 'AIzaSyAbOanFg8rYH62TttXGsIc9ITt6IcmPVaI';
-
-// 시트 ID (이미 입력됨)
 const SHEET_ID = '1G25qo5ts0wUYtF2CuxTuNLAPjYfq0V98QkZW01CBmvM';
-
-// 구글 시트 탭 이름
 const SHEETS = {
-  배부로그: '배부로그',
-  회수로그: '회수로그',
-  재고이동로그: '재고이동로그',
-  반마스터: '반마스터',
-  학생반배정: '학생반배정'
+  baebu: '배부로그',
+  hoisu: '회수로그',
+  idong: '재고이동로그',
+  ban: '반마스터',
+  baejeong: '학생반배정'
 };
 
 const TODAY = new Date().toISOString().split('T')[0];
 document.getElementById('today-date').textContent = TODAY;
-['bulk-date','indiv-date','ret-bulk-date','ret-indiv-date','move-date','search-date'].forEach(id => {
-  const el = document.getElementById(id); if (el) el.value = TODAY;
+['bulk-date','indiv-date','ret-bulk-date','ret-indiv-date','move-date','search-date'].forEach(function(id){
+  var el = document.getElementById(id); if(el) el.value = TODAY;
 });
 
-// ── 구글 시트 API 함수 ────────────────────────
 async function appendToSheet(sheetName, values) {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(sheetName)}:append?valueInputOption=USER_ENTERED&key=${API_KEY}`;
-  const res = await fetch(url, {
+  var url = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/' + encodeURIComponent(sheetName) + ':append?valueInputOption=USER_ENTERED&key=' + API_KEY;
+  var res = await fetch(url, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({values: [values]})
@@ -312,96 +306,100 @@ async function appendToSheet(sheetName, values) {
 }
 
 async function readFromSheet(sheetName) {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(sheetName)}?key=${API_KEY}`;
-  const res = await fetch(url);
+  var url = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/' + encodeURIComponent(sheetName) + '?key=' + API_KEY;
+  var res = await fetch(url);
   if (!res.ok) throw new Error('시트 읽기 실패');
-  const data = await res.json();
+  var data = await res.json();
   return data.values || [];
 }
 
-function showLoading(text='저장 중...') {
+function showLoading(text) {
+  text = text || '저장 중...';
   document.getElementById('loading-text').textContent = text;
   document.getElementById('loading-overlay').classList.add('show');
 }
 function hideLoading() { document.getElementById('loading-overlay').classList.remove('show'); }
-function showSuccess(id) { const el=document.getElementById(id); el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),4000); }
-function showErr(id) { const el=document.getElementById(id); el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),4000); }
+function showSuccess(id) { var el=document.getElementById(id); el.classList.add('show'); setTimeout(function(){el.classList.remove('show');},4000); }
+function showErr(id) { var el=document.getElementById(id); el.classList.add('show'); setTimeout(function(){el.classList.remove('show');},4000); }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).substr(2,5); }
 
-// ── 시트에서 데이터 불러오기 ─────────────────
-let ALL_CLASSES = [];
-let studentClassMap = {};
-let STUDENTS = [];
-let todayCount = 0;
-let specialCount = 0;
+var ALL_CLASSES = [];
+var studentClassMap = {};
+var STUDENTS = [];
 
 async function loadMasterData() {
   showLoading('데이터 불러오는 중...');
   try {
-    // 반마스터에서 반 목록 불러오기
-    const classRows = await readFromSheet(SHEETS.반마스터);
-    ALL_CLASSES = classRows.slice(1).filter(r=>r[0]&&r[2]==='Y').map(r=>r[0]);
+    var classRows = await readFromSheet(SHEETS.ban);
+    ALL_CLASSES = classRows.slice(1).filter(function(r){ return r[0] && r[2]==='Y'; }).map(function(r){ return r[0]; });
 
-    // 학생반배정에서 학생-반 매핑 불러오기
-    const assignRows = await readFromSheet(SHEETS.학생반배정);
+    var assignRows = await readFromSheet(SHEETS.baejeong);
     studentClassMap = {};
-    assignRows.slice(1).forEach(r => {
-      const stu = r[1], cls = r[2], status = r[3];
+    assignRows.slice(1).forEach(function(r) {
+      var stu = r[1], cls = r[2], status = r[3];
       if (!stu || !cls || status !== '재원') return;
       if (!studentClassMap[stu]) studentClassMap[stu] = [];
       if (!studentClassMap[stu].includes(cls)) studentClassMap[stu].push(cls);
     });
     STUDENTS = Object.keys(studentClassMap);
 
-    // 셀렉트 채우기
-    ['bulk-class','ret-bulk-class','move-class'].forEach(id => {
-      const sel = document.getElementById(id); if (!sel) return;
+    ['bulk-class','ret-bulk-class','move-class'].forEach(function(id) {
+      var sel = document.getElementById(id); if(!sel) return;
       sel.innerHTML = '<option value="">반을 선택하세요</option>';
-      ALL_CLASSES.forEach(c => { const o = document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o); });
+      ALL_CLASSES.forEach(function(c) { var o=document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o); });
     });
 
     renderAdminTable();
     await loadTodayStats();
   } catch(e) {
-    alert('데이터 불러오기 실패\nAPI 키를 확인해주세요: ' + e.message);
+    alert('데이터 불러오기 실패. API 키를 확인해주세요: ' + e.message);
   }
   hideLoading();
 }
 
 async function loadTodayStats() {
   try {
-    const rows = await readFromSheet(SHEETS.배부로그);
-    todayCount = rows.slice(1).filter(r=>r[1]===TODAY).length;
-    specialCount = rows.slice(1).filter(r=>r[7]==='Y'||r[7]===true||r[7]==='TRUE').length;
+    var rows = await readFromSheet(SHEETS.baebu);
+    var todayCount = rows.slice(1).filter(function(r){return r[1]===TODAY;}).length;
+    var specialCount = rows.slice(1).filter(function(r){return r[7]==='TRUE'||r[7]==='Y'||r[7]===true;}).length;
     document.getElementById('stat-today').textContent = todayCount;
     document.getElementById('stat-special').textContent = specialCount;
   } catch(e) {}
 }
 
-// ── 관리자 ───────────────────────────────────
-let currentEditStudent = null;
+var currentEditStudent = null;
+
 function renderAdminTable() {
   STUDENTS = Object.keys(studentClassMap);
-  const tbody = document.getElementById('admin-tbody'); tbody.innerHTML = '';
-  Object.entries(studentClassMap).forEach(([stu, classes]) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td style="padding-left:14px;font-weight:600">${stu}</td><td>${classes.map(c=>`<span class="badge">${c}</span>`).join('')||'<span style="color:#bbb;font-size:12px">배정 없음</span>'}</td><td><button class="admin-edit-btn" onclick="openAdminModal('${stu}')">편집</button></td>`;
+  var tbody = document.getElementById('admin-tbody'); tbody.innerHTML = '';
+  Object.entries(studentClassMap).forEach(function(entry) {
+    var stu = entry[0], classes = entry[1];
+    var tr = document.createElement('tr');
+    var badges = classes.map(function(c){ return '<span class="badge">' + c + '</span>'; }).join('');
+    if (!badges) badges = '<span style="color:#bbb;font-size:12px">배정 없음</span>';
+    tr.innerHTML = '<td style="padding-left:14px;font-weight:600">' + stu + '</td><td>' + badges + '</td><td><button class="admin-edit-btn" onclick="openAdminModal('' + stu + '')">편집</button></td>';
     tbody.appendChild(tr);
   });
 }
 
 function openAdminModal(stu) {
   currentEditStudent = stu;
-  document.getElementById('admin-modal-title').textContent = `${stu} - 반 배정`;
-  const list = document.getElementById('admin-class-list'); list.innerHTML = '';
-  const assigned = studentClassMap[stu] || [];
-  ALL_CLASSES.forEach(c => {
-    const checked = assigned.includes(c);
-    const div = document.createElement('div'); div.className = 'check-item';
-    div.innerHTML = `<div class="check-circle ${checked?'checked'}">${checked?'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':''}</div><span class="check-label">${c}</span>`;
-    div.onclick = () => {
-      const cur = studentClassMap[currentEditStudent]||[];
-      studentClassMap[currentEditStudent] = cur.includes(c)?cur.filter(x=>x!==c):[...cur,c];
+  document.getElementById('admin-modal-title').textContent = stu + ' - 반 배정';
+  var list = document.getElementById('admin-class-list'); list.innerHTML = '';
+  var assigned = studentClassMap[stu] || [];
+  ALL_CLASSES.forEach(function(c) {
+    var checked = assigned.includes(c);
+    var div = document.createElement('div'); div.className = 'check-item';
+    var circleClass = checked ? 'check-circle checked' : 'check-circle';
+    var checkIcon = checked ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : '';
+    div.innerHTML = '<div class="' + circleClass + '">' + checkIcon + '</div><span class="check-label">' + c + '</span>';
+    div.onclick = function() {
+      var cur = studentClassMap[currentEditStudent] || [];
+      if (cur.includes(c)) {
+        studentClassMap[currentEditStudent] = cur.filter(function(x){ return x !== c; });
+      } else {
+        studentClassMap[currentEditStudent] = cur.concat([c]);
+      }
       openAdminModal(currentEditStudent);
     };
     list.appendChild(div);
@@ -411,43 +409,49 @@ function openAdminModal(stu) {
 function closeAdminModal() { document.getElementById('admin-modal').style.display='none'; renderAdminTable(); }
 function saveAdminAssign() { closeAdminModal(); }
 function showAddStudentModal() {
-  const name = prompt('추가할 학생 이름을 입력하세요');
-  if (!name||!name.trim()) return;
-  const n = name.trim();
+  var name = prompt('추가할 학생 이름을 입력하세요');
+  if (!name || !name.trim()) return;
+  var n = name.trim();
   if (studentClassMap[n]) { alert('이미 등록된 학생이에요'); return; }
   studentClassMap[n] = []; renderAdminTable(); openAdminModal(n);
 }
 
-// ── 학생 드롭다운 ────────────────────────────
 function filterStudents(ctx) {
-  const map = {indiv:['indiv-student-input','indiv-student-dropdown'],ret:['ret-student-input','ret-student-dropdown'],search:['search-student-input','search-student-dropdown']};
-  const [inId,ddId] = map[ctx];
-  const val = document.getElementById(inId).value.toLowerCase();
-  const dd = document.getElementById(ddId);
+  var inputIds = {indiv:'indiv-student-input', ret:'ret-student-input', search:'search-student-input'};
+  var ddIds = {indiv:'indiv-student-dropdown', ret:'ret-student-dropdown', search:'search-student-dropdown'};
+  var inId = inputIds[ctx], ddId = ddIds[ctx];
+  var val = document.getElementById(inId).value.toLowerCase();
+  var dd = document.getElementById(ddId);
   if (!val) { dd.classList.remove('show'); return; }
-  const re = new RegExp(val.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');
-  const matches = STUDENTS.filter(s=>s.toLowerCase().includes(val));
-  dd.innerHTML = matches.length
-    ? matches.map(s=>`<div class="dropdown-item" onclick="selectStudent('${ctx}','${s}')">${s.replace(re,m=>`<mark>${m}</mark>`)}</div>`).join('')
-    : '<div class="dropdown-item" style="color:#bbb">검색 결과 없음</div>';
+  var matches = STUDENTS.filter(function(s){ return s.toLowerCase().includes(val); });
+  if (matches.length) {
+    dd.innerHTML = matches.map(function(s){
+      var highlighted = s.replace(new RegExp(val.replace(/[.*+?^${}()|[\]\]/g,'\$&'),'gi'), function(m){ return '<mark>' + m + '</mark>'; });
+      return '<div class="dropdown-item" onclick="selectStudent('' + ctx + '','' + s + '')">' + highlighted + '</div>';
+    }).join('');
+  } else {
+    dd.innerHTML = '<div class="dropdown-item" style="color:#bbb">검색 결과 없음</div>';
+  }
   dd.classList.add('show');
 }
 
-let selectedIndivClasses = [];
+var selectedIndivClasses = [];
+
 function selectStudent(ctx, name) {
-  if (ctx==='indiv') {
+  if (ctx === 'indiv') {
     document.getElementById('indiv-student-input').value = name;
     document.getElementById('indiv-student-dropdown').classList.remove('show');
     selectedIndivClasses = []; renderClassTags(name);
-    const info = document.getElementById('indiv-student-info');
-    info.textContent = `배정된 반 ${(studentClassMap[name]||[]).length}개 - 아래를 탭해서 선택하세요`;
+    var info = document.getElementById('indiv-student-info');
+    var cnt = (studentClassMap[name] || []).length;
+    info.textContent = '배정된 반 ' + cnt + '개 - 아래를 탭해서 선택하세요';
     info.style.display = 'block';
-  } else if (ctx==='ret') {
+  } else if (ctx === 'ret') {
     document.getElementById('ret-student-input').value = name;
     document.getElementById('ret-student-dropdown').classList.remove('show');
-    const sel = document.getElementById('ret-indiv-class');
+    var sel = document.getElementById('ret-indiv-class');
     sel.innerHTML = '<option value="">반을 선택하세요</option>';
-    (studentClassMap[name]||[]).forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
+    (studentClassMap[name]||[]).forEach(function(c){ var o=document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o); });
   } else {
     document.getElementById('search-student-input').value = name;
     document.getElementById('search-student-dropdown').classList.remove('show');
@@ -455,150 +459,211 @@ function selectStudent(ctx, name) {
 }
 
 function renderClassTags(studentName) {
-  const wrap = document.getElementById('indiv-class-tags'); wrap.innerHTML = '';
-  if (!studentName) { wrap.innerHTML='<span class="tag-placeholder">학생을 먼저 선택하세요</span>'; return; }
-  if (selectedIndivClasses.length===0) {
-    wrap.innerHTML='<span class="tag-placeholder">탭하면 반 선택창이 열려요</span>';
+  var wrap = document.getElementById('indiv-class-tags'); wrap.innerHTML = '';
+  if (!studentName) { wrap.innerHTML = '<span class="tag-placeholder">학생을 먼저 선택하세요</span>'; return; }
+  if (selectedIndivClasses.length === 0) {
+    wrap.innerHTML = '<span class="tag-placeholder">탭하면 반 선택창이 열려요</span>';
   } else {
-    selectedIndivClasses.forEach(c=>{
-      const tag=document.createElement('span'); tag.className='tag';
-      tag.innerHTML=`${c} <span class="tag-x" onclick="removeTag(event,'${c}')">✕</span>`;
+    selectedIndivClasses.forEach(function(c) {
+      var tag = document.createElement('span'); tag.className = 'tag';
+      tag.innerHTML = c + ' <span class="tag-x" onclick="removeTag(event,'' + c + '')">x</span>';
       wrap.appendChild(tag);
     });
-    const btn=document.createElement('span');
-    btn.style.cssText='font-size:13px;color:#185FA5;cursor:pointer;padding:3px 6px;align-self:center';
-    btn.textContent='+추가'; btn.onclick=e=>{e.stopPropagation();showClassPicker();};
+    var btn = document.createElement('span');
+    btn.style.cssText = 'font-size:13px;color:#185FA5;cursor:pointer;padding:3px 6px;align-self:center';
+    btn.textContent = '+추가';
+    btn.onclick = function(e){ e.stopPropagation(); showClassPicker(); };
     wrap.appendChild(btn);
   }
 }
-function removeTag(e,c){e.stopPropagation();selectedIndivClasses=selectedIndivClasses.filter(x=>x!==c);renderClassTags(document.getElementById('indiv-student-input').value);}
+
+function removeTag(e, c) {
+  e.stopPropagation();
+  selectedIndivClasses = selectedIndivClasses.filter(function(x){ return x !== c; });
+  renderClassTags(document.getElementById('indiv-student-input').value);
+}
 
 function showClassPicker() {
-  const stu = document.getElementById('indiv-student-input').value;
+  var stu = document.getElementById('indiv-student-input').value;
   if (!stu) { alert('먼저 학생을 선택해주세요'); return; }
-  const avail = studentClassMap[stu]||[];
-  if (avail.length===0) { alert('이 학생에게 배정된 반이 없어요.\n관리자 탭에서 반을 배정해주세요.'); return; }
-  document.getElementById('picker-student-name').textContent = `${stu}의 배정된 반`;
-  const list = document.getElementById('class-picker-list'); list.innerHTML='';
-  avail.forEach(c=>{
-    const checked = selectedIndivClasses.includes(c);
-    const div=document.createElement('div'); div.className='check-item';
-    div.innerHTML=`<div class="check-circle ${checked?'checked'}">${checked?'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':''}</div><span class="check-label">${c}</span>`;
-    div.onclick=()=>{selectedIndivClasses.includes(c)?selectedIndivClasses=selectedIndivClasses.filter(x=>x!==c):selectedIndivClasses.push(c);showClassPicker();};
+  var avail = studentClassMap[stu] || [];
+  if (avail.length === 0) { alert('이 학생에게 배정된 반이 없어요.
+관리자 탭에서 반을 배정해주세요.'); return; }
+  document.getElementById('picker-student-name').textContent = stu + '의 배정된 반';
+  var list = document.getElementById('class-picker-list'); list.innerHTML = '';
+  avail.forEach(function(c) {
+    var checked = selectedIndivClasses.includes(c);
+    var div = document.createElement('div'); div.className = 'check-item';
+    var cc = checked ? 'check-circle checked' : 'check-circle';
+    var ci = checked ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : '';
+    div.innerHTML = '<div class="' + cc + '">' + ci + '</div><span class="check-label">' + c + '</span>';
+    div.onclick = function() {
+      if (selectedIndivClasses.includes(c)) {
+        selectedIndivClasses = selectedIndivClasses.filter(function(x){ return x !== c; });
+      } else {
+        selectedIndivClasses.push(c);
+      }
+      showClassPicker();
+    };
     list.appendChild(div);
   });
-  document.getElementById('class-picker-modal').style.display='flex';
+  document.getElementById('class-picker-modal').style.display = 'flex';
 }
-function closeClassPicker(){document.getElementById('class-picker-modal').style.display='none';renderClassTags(document.getElementById('indiv-student-input').value);}
-
-// ── 공통 유틸 ────────────────────────────────
-function changeQty(id,delta){const el=document.getElementById(id);el.value=Math.max(1,(parseInt(el.value)||1)+delta);}
-function updateBulkInfo(){const cls=document.getElementById('bulk-class').value;document.getElementById('bulk-count-info').textContent=cls?`📋 선택한 반: ${cls} - 해당 반 전체 학생에게 배부돼요`:'반을 선택하면 대상 학생 수가 표시돼요';}
-function updateArriveOptions(){const from=document.getElementById('move-from').value;const to=document.getElementById('move-to');const opts=['창고','4층지원실','8층지원실'].filter(p=>p!==from);to.innerHTML='<option value="">선택하세요</option>'+opts.map(o=>`<option>${o}</option>`).join('');}
-function showTab(name){
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('tab-'+name).classList.add('active');
-  ['home','bulk','indiv','ret-bulk','ret-indiv','move','search','admin'].forEach((t,i)=>{if(t===name)document.querySelectorAll('.nav-btn')[i]?.classList.add('active');});
+function closeClassPicker() {
+  document.getElementById('class-picker-modal').style.display = 'none';
+  renderClassTags(document.getElementById('indiv-student-input').value);
 }
 
-// ── 저장 함수들 (구글 시트 연동) ─────────────
+function changeQty(id, delta) { var el=document.getElementById(id); el.value=Math.max(1,(parseInt(el.value)||1)+delta); }
+function updateBulkInfo() {
+  var cls = document.getElementById('bulk-class').value;
+  document.getElementById('bulk-count-info').textContent = cls ? '선택한 반: ' + cls + ' - 해당 반 전체 학생에게 배부돼요' : '반을 선택하면 대상 학생 수가 표시돼요';
+}
+function updateArriveOptions() {
+  var from = document.getElementById('move-from').value;
+  var to = document.getElementById('move-to');
+  var opts = ['창고','4층지원실','8층지원실'].filter(function(p){ return p !== from; });
+  to.innerHTML = '<option value="">선택하세요</option>' + opts.map(function(o){ return '<option>' + o + '</option>'; }).join('');
+}
+function showTab(name) {
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.getElementById('tab-' + name).classList.add('active');
+  var tabs = ['home','bulk','indiv','ret-bulk','ret-indiv','move','search','admin'];
+  var idx = tabs.indexOf(name);
+  var btns = document.querySelectorAll('.nav-btn');
+  if (btns[idx]) btns[idx].classList.add('active');
+}
+function showSuccessMsg(id) { var el=document.getElementById(id); el.classList.add('show'); setTimeout(function(){el.classList.remove('show');},4000); }
+function showErrMsg(id) { var el=document.getElementById(id); el.classList.add('show'); setTimeout(function(){el.classList.remove('show');},4000); }
+
 async function saveBulk() {
-  const date=document.getElementById('bulk-date').value, cls=document.getElementById('bulk-class').value, place=document.getElementById('bulk-place').value, qty=document.getElementById('bulk-qty').value, staff=document.getElementById('bulk-staff').value;
+  var date=document.getElementById('bulk-date').value, cls=document.getElementById('bulk-class').value;
+  var place=document.getElementById('bulk-place').value, qty=document.getElementById('bulk-qty').value;
+  var staff=document.getElementById('bulk-staff').value;
   if (!date||!cls||!place||!staff) { alert('필수 항목을 모두 입력해주세요'); return; }
   showLoading('일괄배부 저장 중...');
   try {
-    // 해당 반 학생 목록 가져오기
-    const students = Object.entries(studentClassMap).filter(([s,cs])=>cs.includes(cls)).map(([s])=>s);
-    // 학생별로 배부로그 한 줄씩 추가
-    for (const stu of students) {
-      await appendToSheet(SHEETS.배부로그, [uid(), date, stu, cls, '일괄', place, qty, 'FALSE', '', '', staff, '배부', '']);
+    var students = Object.entries(studentClassMap).filter(function(e){ return e[1].includes(cls); }).map(function(e){ return e[0]; });
+    for (var i=0; i<students.length; i++) {
+      await appendToSheet(SHEETS.baebu, [uid(), date, students[i], cls, '일괄', place, qty, 'FALSE', '', '', staff, '배부', '']);
     }
-    hideLoading(); showSuccess('bulk-success');
-    document.getElementById('bulk-class').value=''; document.getElementById('bulk-place').value=''; document.getElementById('bulk-qty').value='1'; document.getElementById('bulk-staff').value=''; updateBulkInfo();
-    await loadTodayStats();
-  } catch(e) { hideLoading(); showErr('bulk-err'); }
+    hideLoading(); showSuccessMsg('bulk-success');
+    document.getElementById('bulk-class').value=''; document.getElementById('bulk-place').value='';
+    document.getElementById('bulk-qty').value='1'; document.getElementById('bulk-staff').value='';
+    updateBulkInfo(); await loadTodayStats();
+  } catch(e) { hideLoading(); showErrMsg('bulk-err'); }
 }
 
 async function saveIndiv() {
-  const date=document.getElementById('indiv-date').value, student=document.getElementById('indiv-student-input').value, place=document.getElementById('indiv-place').value, qty=document.getElementById('indiv-qty').value, staff=document.getElementById('indiv-staff').value, specialType=document.getElementById('special-type').value;
-  if (!date||!student||selectedIndivClasses.length===0||!place||!staff||!specialType) { alert('필수 항목을 모두 입력해주세요\n(배부반과 특이사항 유형을 확인해주세요)'); return; }
+  var date=document.getElementById('indiv-date').value, student=document.getElementById('indiv-student-input').value;
+  var place=document.getElementById('indiv-place').value, qty=document.getElementById('indiv-qty').value;
+  var staff=document.getElementById('indiv-staff').value, specialType=document.getElementById('special-type').value;
+  if (!date||!student||selectedIndivClasses.length===0||!place||!staff||!specialType) {
+    alert('필수 항목을 모두 입력해주세요
+(배부반과 특이사항 유형을 확인해주세요)'); return;
+  }
   showLoading('개별배부 저장 중...');
   try {
-    for (const cls of selectedIndivClasses) {
-      await appendToSheet(SHEETS.배부로그, [uid(), date, student, cls, '개별', place, qty, 'TRUE', specialType, '', staff, '배부', '']);
+    for (var i=0; i<selectedIndivClasses.length; i++) {
+      await appendToSheet(SHEETS.baebu, [uid(), date, student, selectedIndivClasses[i], '개별', place, qty, 'TRUE', specialType, '', staff, '배부', '']);
     }
-    hideLoading(); showSuccess('indiv-success');
-    // 홈 특이사항 업데이트
-    updateSpecialListHome(student, selectedIndivClasses, specialType, date);
-    document.getElementById('indiv-student-input').value=''; document.getElementById('indiv-student-info').style.display='none'; selectedIndivClasses=[]; renderClassTags(''); document.getElementById('indiv-place').value=''; document.getElementById('indiv-qty').value='1'; document.getElementById('special-type').value=''; document.getElementById('indiv-staff').value='';
-    await loadTodayStats();
-  } catch(e) { hideLoading(); showErr('indiv-err'); }
+    hideLoading(); showSuccessMsg('indiv-success');
+    updateSpecialListHome(student, selectedIndivClasses.slice(), specialType, date);
+    document.getElementById('indiv-student-input').value=''; document.getElementById('indiv-student-info').style.display='none';
+    selectedIndivClasses=[]; renderClassTags(''); document.getElementById('indiv-place').value='';
+    document.getElementById('indiv-qty').value='1'; document.getElementById('special-type').value='';
+    document.getElementById('indiv-staff').value=''; await loadTodayStats();
+  } catch(e) { hideLoading(); showErrMsg('indiv-err'); }
 }
 
 async function saveRetBulk() {
-  const date=document.getElementById('ret-bulk-date').value, origDate=document.getElementById('ret-bulk-orig-date').value, cls=document.getElementById('ret-bulk-class').value, place=document.getElementById('ret-bulk-place').value, staff=document.getElementById('ret-bulk-staff').value;
+  var date=document.getElementById('ret-bulk-date').value, origDate=document.getElementById('ret-bulk-orig-date').value;
+  var cls=document.getElementById('ret-bulk-class').value, place=document.getElementById('ret-bulk-place').value;
+  var staff=document.getElementById('ret-bulk-staff').value;
   if (!date||!cls||!place||!staff) { alert('필수 항목을 모두 입력해주세요'); return; }
   showLoading('일괄회수 저장 중...');
   try {
-    const students = Object.entries(studentClassMap).filter(([s,cs])=>cs.includes(cls)).map(([s])=>s);
-    for (const stu of students) {
-      await appendToSheet(SHEETS.회수로그, [uid(), date, origDate||date, stu, cls, '일괄', place, 1, '일괄회수', staff, '', '']);
+    var students = Object.entries(studentClassMap).filter(function(e){ return e[1].includes(cls); }).map(function(e){ return e[0]; });
+    for (var i=0; i<students.length; i++) {
+      await appendToSheet(SHEETS.hoisu, [uid(), date, origDate||date, students[i], cls, '일괄', place, 1, '일괄회수', staff, '', '']);
     }
-    hideLoading(); showSuccess('ret-bulk-success');
-    document.getElementById('ret-bulk-class').value=''; document.getElementById('ret-bulk-place').value=''; document.getElementById('ret-bulk-staff').value='';
-  } catch(e) { hideLoading(); showErr('ret-bulk-err'); }
+    hideLoading(); showSuccessMsg('ret-bulk-success');
+    document.getElementById('ret-bulk-class').value=''; document.getElementById('ret-bulk-place').value='';
+    document.getElementById('ret-bulk-staff').value='';
+  } catch(e) { hideLoading(); showErrMsg('ret-bulk-err'); }
 }
 
 async function saveRetIndiv() {
-  const date=document.getElementById('ret-indiv-date').value, origDate=document.getElementById('ret-indiv-orig-date').value, student=document.getElementById('ret-student-input').value, cls=document.getElementById('ret-indiv-class').value, place=document.getElementById('ret-indiv-place').value, qty=document.getElementById('ret-indiv-qty').value, reason=document.getElementById('ret-indiv-reason').value, staff=document.getElementById('ret-indiv-staff').value;
+  var date=document.getElementById('ret-indiv-date').value, origDate=document.getElementById('ret-indiv-orig-date').value;
+  var student=document.getElementById('ret-student-input').value, cls=document.getElementById('ret-indiv-class').value;
+  var place=document.getElementById('ret-indiv-place').value, qty=document.getElementById('ret-indiv-qty').value;
+  var reason=document.getElementById('ret-indiv-reason').value, staff=document.getElementById('ret-indiv-staff').value;
   if (!date||!student||!place||!staff) { alert('필수 항목을 모두 입력해주세요'); return; }
   showLoading('개별회수 저장 중...');
   try {
-    await appendToSheet(SHEETS.회수로그, [uid(), date, origDate||date, student, cls, '개별', place, qty, reason||'', staff, '', '']);
-    hideLoading(); showSuccess('ret-indiv-success');
-    document.getElementById('ret-student-input').value=''; document.getElementById('ret-indiv-class').innerHTML='<option value="">학생을 먼저 선택하세요</option>'; document.getElementById('ret-indiv-place').value=''; document.getElementById('ret-indiv-qty').value='1'; document.getElementById('ret-indiv-reason').value=''; document.getElementById('ret-indiv-staff').value='';
-  } catch(e) { hideLoading(); showErr('ret-indiv-err'); }
+    await appendToSheet(SHEETS.hoisu, [uid(), date, origDate||date, student, cls, '개별', place, qty, reason||'', staff, '', '']);
+    hideLoading(); showSuccessMsg('ret-indiv-success');
+    document.getElementById('ret-student-input').value='';
+    document.getElementById('ret-indiv-class').innerHTML='<option value="">학생을 먼저 선택하세요</option>';
+    document.getElementById('ret-indiv-place').value=''; document.getElementById('ret-indiv-qty').value='1';
+    document.getElementById('ret-indiv-reason').value=''; document.getElementById('ret-indiv-staff').value='';
+  } catch(e) { hideLoading(); showErrMsg('ret-indiv-err'); }
 }
 
 async function saveMove() {
-  const date=document.getElementById('move-date').value, cls=document.getElementById('move-class').value, from=document.getElementById('move-from').value, to=document.getElementById('move-to').value, qty=document.getElementById('move-qty').value, staff=document.getElementById('move-staff').value, memo=document.getElementById('move-memo').value;
+  var date=document.getElementById('move-date').value, cls=document.getElementById('move-class').value;
+  var from=document.getElementById('move-from').value, to=document.getElementById('move-to').value;
+  var qty=document.getElementById('move-qty').value, staff=document.getElementById('move-staff').value;
+  var memo=document.getElementById('move-memo').value;
   if (!date||!cls||!from||!to||!staff) { alert('필수 항목을 모두 입력해주세요'); return; }
   showLoading('재고이동 저장 중...');
   try {
-    await appendToSheet(SHEETS.재고이동로그, [uid(), date, cls, from, to, qty, staff, memo||'']);
-    hideLoading(); showSuccess('move-success');
-    document.getElementById('move-class').value=''; document.getElementById('move-from').value=''; document.getElementById('move-to').innerHTML='<option value="">출발장소를 먼저 선택하세요</option>'; document.getElementById('move-qty').value='1'; document.getElementById('move-staff').value=''; document.getElementById('move-memo').value='';
-  } catch(e) { hideLoading(); showErr('move-err'); }
+    await appendToSheet(SHEETS.idong, [uid(), date, cls, from, to, qty, staff, memo||'']);
+    hideLoading(); showSuccessMsg('move-success');
+    document.getElementById('move-class').value=''; document.getElementById('move-from').value='';
+    document.getElementById('move-to').innerHTML='<option value="">출발장소를 먼저 선택하세요</option>';
+    document.getElementById('move-qty').value='1'; document.getElementById('move-staff').value='';
+    document.getElementById('move-memo').value='';
+  } catch(e) { hideLoading(); showErrMsg('move-err'); }
 }
 
 async function doSearch() {
-  const student=document.getElementById('search-student-input').value, date=document.getElementById('search-date').value;
+  var student=document.getElementById('search-student-input').value, date=document.getElementById('search-date').value;
   if (!student) { alert('학생 이름을 입력해주세요'); return; }
   showLoading('조회 중...');
   try {
-    const rows = await readFromSheet(SHEETS.배부로그);
-    const results = rows.slice(1).filter(r=>r[2]===student&&r[1]<=date&&r[11]==='배부');
-    document.getElementById('search-result-title').textContent = `${student} - ${date}까지 배부 이력 (${results.length}건)`;
-    document.getElementById('search-result-list').innerHTML = results.length
-      ? results.map(r=>`<div class="card" style="margin-bottom:8px"><div style="font-size:13px;font-weight:600">${r[1]} · ${r[3]||''}</div><div style="font-size:12px;color:#888;margin-top:4px">${r[4]||''} · ${r[5]||''} · ${r[6]||1}권${(r[7]==='TRUE'||r[7]==='Y')?` · <span style="color:#D85A30">⚠ ${r[8]||''}</span>`:''}</div></div>`).join('')
-      : '<div class="card" style="text-align:center;color:#bbb;font-size:13px;padding:16px">이 기간에 배부 이력이 없어요</div>';
-    document.getElementById('search-result').style.display='block';
+    var rows = await readFromSheet(SHEETS.baebu);
+    var results = rows.slice(1).filter(function(r){ return r[2]===student && r[1]<=date && r[11]==='배부'; });
+    document.getElementById('search-result-title').textContent = student + ' - ' + date + '까지 배부 이력 (' + results.length + '건)';
+    if (results.length) {
+      document.getElementById('search-result-list').innerHTML = results.map(function(r){
+        var special = (r[7]==='TRUE'||r[7]==='Y') ? ' <span style="color:#D85A30">/ 특이: ' + (r[8]||'') + '</span>' : '';
+        return '<div class="card" style="margin-bottom:8px"><div style="font-size:13px;font-weight:600">' + r[1] + ' / ' + (r[3]||'') + '</div><div style="font-size:12px;color:#888;margin-top:4px">' + (r[4]||'') + ' / ' + (r[5]||'') + ' / ' + (r[6]||1) + '권' + special + '</div></div>';
+      }).join('');
+    } else {
+      document.getElementById('search-result-list').innerHTML = '<div class="card" style="text-align:center;color:#bbb;font-size:13px;padding:16px">이 기간에 배부 이력이 없어요</div>';
+    }
+    document.getElementById('search-result').style.display = 'block';
     hideLoading();
   } catch(e) { hideLoading(); alert('조회 실패: ' + e.message); }
 }
 
 function updateSpecialListHome(student, classes, specialType, date) {
-  const list = document.getElementById('special-list');
-  if (list.querySelector('[style*="아직"]')) list.innerHTML='';
-  const item=document.createElement('div'); item.style.cssText='padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:13px';
-  item.innerHTML=`<div style="font-weight:600;color:#1a1a1a">${student} <span class="special-badge">⚠ ${specialType}</span></div><div style="color:#888;margin-top:3px;font-size:12px">${classes.join(', ')} · ${date}</div>`;
+  var list = document.getElementById('special-list');
+  if (list.querySelector('[style*="아직"]')) list.innerHTML = '';
+  var item = document.createElement('div');
+  item.style.cssText = 'padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:13px';
+  item.innerHTML = '<div style="font-weight:600;color:#1a1a1a">' + student + ' <span class="special-badge">특이: ' + specialType + '</span></div><div style="color:#888;margin-top:3px;font-size:12px">' + classes.join(', ') + ' / ' + date + '</div>';
   list.appendChild(item);
 }
 
-document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap'))document.querySelectorAll('.dropdown-list').forEach(d=>d.classList.remove('show'));});
+document.addEventListener('click', function(e){
+  if (!e.target.closest('.search-wrap')) {
+    document.querySelectorAll('.dropdown-list').forEach(function(d){ d.classList.remove('show'); });
+  }
+});
 
-// 앱 시작 시 데이터 불러오기
 loadMasterData();
 </script>
 </body>
