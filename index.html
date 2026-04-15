@@ -392,7 +392,7 @@ function renderAdminTable() {
 
 function openAdminModal(stu) {
   currentEditStudent = stu;
-  document.getElementById('admin-modal-title').textContent = `${stu} — 반 배정`;
+  document.getElementById('admin-modal-title').textContent = `${stu} - 반 배정`;
   const list = document.getElementById('admin-class-list'); list.innerHTML = '';
   const assigned = studentClassMap[stu] || [];
   ALL_CLASSES.forEach(c => {
@@ -440,7 +440,7 @@ function selectStudent(ctx, name) {
     document.getElementById('indiv-student-dropdown').classList.remove('show');
     selectedIndivClasses = []; renderClassTags(name);
     const info = document.getElementById('indiv-student-info');
-    info.textContent = `배정된 반 ${(studentClassMap[name]||[]).length}개 — 아래를 탭해서 선택하세요`;
+    info.textContent = `배정된 반 ${(studentClassMap[name]||[]).length}개 - 아래를 탭해서 선택하세요`;
     info.style.display = 'block';
   } else if (ctx==='ret') {
     document.getElementById('ret-student-input').value = name;
@@ -493,7 +493,7 @@ function closeClassPicker(){document.getElementById('class-picker-modal').style.
 
 // ── 공통 유틸 ────────────────────────────────
 function changeQty(id,delta){const el=document.getElementById(id);el.value=Math.max(1,(parseInt(el.value)||1)+delta);}
-function updateBulkInfo(){const cls=document.getElementById('bulk-class').value;document.getElementById('bulk-count-info').textContent=cls?`📋 선택한 반: ${cls} — 해당 반 전체 학생에게 배부돼요`:'반을 선택하면 대상 학생 수가 표시돼요';}
+function updateBulkInfo(){const cls=document.getElementById('bulk-class').value;document.getElementById('bulk-count-info').textContent=cls?`📋 선택한 반: ${cls} - 해당 반 전체 학생에게 배부돼요`:'반을 선택하면 대상 학생 수가 표시돼요';}
 function updateArriveOptions(){const from=document.getElementById('move-from').value;const to=document.getElementById('move-to');const opts=['창고','4층지원실','8층지원실'].filter(p=>p!==from);to.innerHTML='<option value="">선택하세요</option>'+opts.map(o=>`<option>${o}</option>`).join('');}
 function showTab(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -579,7 +579,7 @@ async function doSearch() {
   try {
     const rows = await readFromSheet(SHEETS.배부로그);
     const results = rows.slice(1).filter(r=>r[2]===student&&r[1]<=date&&r[11]==='배부');
-    document.getElementById('search-result-title').textContent = `${student} — ${date}까지 배부 이력 (${results.length}건)`;
+    document.getElementById('search-result-title').textContent = `${student} - ${date}까지 배부 이력 (${results.length}건)`;
     document.getElementById('search-result-list').innerHTML = results.length
       ? results.map(r=>`<div class="card" style="margin-bottom:8px"><div style="font-size:13px;font-weight:600">${r[1]} · ${r[3]||''}</div><div style="font-size:12px;color:#888;margin-top:4px">${r[4]||''} · ${r[5]||''} · ${r[6]||1}권${(r[7]==='TRUE'||r[7]==='Y')?` · <span style="color:#D85A30">⚠ ${r[8]||''}</span>`:''}</div></div>`).join('')
       : '<div class="card" style="text-align:center;color:#bbb;font-size:13px;padding:16px">이 기간에 배부 이력이 없어요</div>';
