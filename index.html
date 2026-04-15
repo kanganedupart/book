@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>교재 관리 어플</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans-serif;background:#f5f5f5;min-height:100vh;color:#1a1a1a}
+.app{max-width:480px;margin:0 auto;background:#fff;min-height:100vh;display:flex;flex-direction:column}
+.topbar{background:#fff;border-bottom:1px solid #e8e8e8;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.topbar-title{font-size:17px;font-weight:600;color:#1a1a1a}
+.topbar-sub{font-size:12px;color:#888}
+.nav{display:flex;border-bottom:1px solid #e8e8e8;background:#fff;overflow-x:auto;scrollbar-width:none;position:sticky;top:53px;z-index:9}
+.nav::-webkit-scrollbar{display:none}
+.nav-btn{flex:0 0 auto;padding:10px 13px;font-size:13px;color:#888;background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;transition:all .15s}
+.nav-btn.active{color:#185FA5;border-bottom-color:#185FA5;font-weight:600}
+.content{flex:1;padding:16px;overflow-y:auto}
+.section-title{font-size:13px;font-weight:600;color:#666;margin-bottom:10px}
+.card{background:#fff;border:1px solid #e8e8e8;border-radius:12px;padding:16px;margin-bottom:12px}
+.form-row{margin-bottom:14px}
+.form-label{font-size:13px;color:#666;margin-bottom:5px;display:flex;align-items:center;gap:4px}
+.req{color:#D85A30;font-size:11px}
+.form-input{width:100%;height:40px;border:1px solid #ddd;border-radius:8px;padding:0 12px;font-size:14px;color:#1a1a1a;background:#fff;outline:none;transition:border .15s;font-family:inherit}
+.form-input:focus{border-color:#378ADD;box-shadow:0 0 0 3px rgba(55,138,221,0.12)}
+.form-select{width:100%;height:40px;border:1px solid #ddd;border-radius:8px;padding:0 12px;font-size:14px;color:#1a1a1a;background:#fff;outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;font-family:inherit}
+.form-select:focus{border-color:#378ADD}
+.qty-row{display:flex;align-items:center;border:1px solid #ddd;border-radius:8px;overflow:hidden}
+.qty-btn{width:44px;height:40px;background:#f5f5f5;border:none;cursor:pointer;font-size:22px;color:#1a1a1a;transition:background .15s;flex-shrink:0}
+.qty-btn:active{background:#e0e0e0}
+.qty-val{flex:1;height:40px;text-align:center;font-size:16px;font-weight:600;border:none;background:#fff;color:#1a1a1a;outline:none;font-family:inherit}
+.tags-wrap{display:flex;flex-wrap:wrap;gap:6px;padding:8px;border:1px solid #ddd;border-radius:8px;min-height:44px;cursor:pointer;background:#fff}
+.tag{background:#E6F1FB;color:#0C447C;font-size:12px;padding:4px 10px;border-radius:20px;display:flex;align-items:center;gap:4px}
+.tag-x{cursor:pointer;font-size:15px;color:#378ADD;line-height:1}
+.tag-placeholder{font-size:14px;color:#bbb;padding:2px 4px}
+.special-box{background:#FFF5F0;border:1px solid #F5C4B3;border-radius:8px;padding:12px}
+.save-btn{width:100%;height:50px;background:#185FA5;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;margin-top:4px;transition:background .15s;font-family:inherit}
+.save-btn:active{background:#0C447C}
+.home-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.home-card{background:#fff;border:1px solid #e8e8e8;border-radius:12px;padding:16px;cursor:pointer;transition:all .15s;text-align:center}
+.home-card:active{background:#f5f5f5}
+.home-card-icon{font-size:28px;margin-bottom:8px}
+.home-card-label{font-size:14px;font-weight:600;color:#1a1a1a}
+.home-card-desc{font-size:11px;color:#888;margin-top:3px}
+.home-card.primary{background:#EBF4FF;border-color:#B5D4F4}
+.home-card.primary .home-card-label{color:#0C447C}
+.alert-box{background:#EAF3DE;border:1px solid #C0DD97;border-radius:8px;padding:10px 14px;font-size:13px;color:#27500A;margin-bottom:14px;display:none}
+.alert-box.show{display:block}
+.search-wrap{position:relative}
+.search-input{width:100%;height:40px;border:1px solid #ddd;border-radius:8px;padding:0 12px 0 36px;font-size:14px;color:#1a1a1a;background:#fff;outline:none;font-family:inherit}
+.search-input:focus{border-color:#378ADD;box-shadow:0 0 0 3px rgba(55,138,221,0.12)}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#bbb;font-size:15px;pointer-events:none}
+.dropdown-list{position:absolute;top:42px;left:0;right:0;background:#fff;border:1px solid #ddd;border-radius:8px;z-index:50;max-height:200px;overflow-y:auto;display:none;box-shadow:0 4px 16px rgba(0,0,0,0.1)}
+.dropdown-list.show{display:block}
+.dropdown-item{padding:10px 14px;font-size:14px;cursor:pointer;color:#1a1a1a;border-bottom:1px solid #f0f0f0}
+.dropdown-item:last-child{border-bottom:none}
+.dropdown-item:hover{background:#f5f5f5}
+.dropdown-item mark{background:#B5D4F4;color:#042C53;border-radius:2px;padding:0 1px}
+.status-bar{display:flex;gap:10px;margin-bottom:16px}
+.status-card{flex:1;background:#f5f5f5;border-radius:10px;padding:14px;text-align:center}
+.status-num{font-size:24px;font-weight:700;color:#1a1a1a}
+.status-label{font-size:11px;color:#888;margin-top:2px}
+.screen{display:none}
+.screen.active{display:block}
+.info-box{background:#f5f5f5;border-radius:8px;padding:9px 12px;font-size:12px;color:#666;margin-top:6px;margin-bottom:14px}
+.admin-table{width:100%;font-size:13px;border-collapse:collapse}
+.admin-table th{font-weight:600;color:#666;padding:10px 8px;border-bottom:1px solid #e8e8e8;text-align:left;font-size:12px;background:#fafafa}
+.admin-table td{padding:10px 8px;border-bottom:1px solid #f0f0f0;color:#1a1a1a;vertical-align:top}
+.badge{display:inline-block;background:#E6F1FB;color:#0C447C;font-size:11px;padding:3px 8px;border-radius:20px;margin:2px 2px 2px 0}
+.admin-edit-btn{background:none;border:1px solid #ddd;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;color:#666;font-family:inherit}
+.admin-edit-btn:hover{background:#f5f5f5}
+.modal-wrap{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;align-items:flex-end}
+.modal-sheet{background:#fff;border-radius:16px 16px 0 0;width:100%;max-height:75vh;overflow-y:auto;padding:16px}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.modal-title{font-size:15px;font-weight:600;color:#1a1a1a}
+.modal-close{background:none;border:none;font-size:24px;cursor:pointer;color:#888;line-height:1}
+.check-item{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #f0f0f0;cursor:pointer}
+.check-circle{width:22px;height:22px;border-radius:50%;border:1.5px solid #ddd;background:transparent;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.check-circle.checked{border-color:#185FA5;background:#185FA5}
+.check-label{font-size:14px;color:#1a1a1a}
+.special-badge{background:#FAECE7;color:#993C1D;font-size:11px;padding:2px 8px;border-radius:20px;margin-left:6px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="topbar-title">📚 교재 관리</div>
+    <div class="topbar-sub" id="today-date"></div>
+  </div>
+  <div class="nav">
+    <button class="nav-btn active" onclick="showTab('home')">홈</button>
+    <button class="nav-btn" onclick="showTab('bulk')">일괄배부</button>
+    <button class="nav-btn" onclick="showTab('indiv')">개별배부</button>
+    <button class="nav-btn" onclick="showTab('ret-bulk')">일괄회수</button>
+    <button class="nav-btn" onclick="showTab('ret-indiv')">개별회수</button>
+    <button class="nav-btn" onclick="showTab('move')">재고이동</button>
+    <button class="nav-btn" onclick="showTab('search')">학생조회</button>
+    <button class="nav-btn" onclick="showTab('admin')">⚙ 관리자</button>
+  </div>
+
+  <div class="content">
+
+    <!-- 홈 -->
+    <div id="tab-home" class="screen active">
+      <div class="status-bar">
+        <div class="status-card"><div class="status-num" id="stat-today">0</div><div class="status-label">오늘 배부</div></div>
+        <div class="status-card"><div class="status-num" id="stat-special">0</div><div class="status-label">특이사항</div></div>
+      </div>
+      <div class="section-title">빠른 작업</div>
+      <div class="home-grid">
+        <div class="home-card primary" onclick="showTab('bulk')"><div class="home-card-icon">👥</div><div class="home-card-label">일괄배부</div><div class="home-card-desc">반 전체에 배부</div></div>
+        <div class="home-card primary" onclick="showTab('indiv')"><div class="home-card-icon">👤</div><div class="home-card-label">개별배부</div><div class="home-card-desc">특정 학생만</div></div>
+        <div class="home-card" onclick="showTab('ret-bulk')"><div class="home-card-icon">↩️</div><div class="home-card-label">일괄회수</div><div class="home-card-desc">반 전체 회수</div></div>
+        <div class="home-card" onclick="showTab('ret-indiv')"><div class="home-card-icon">🔄</div><div class="home-card-label">개별회수</div><div class="home-card-desc">특정 학생 회수</div></div>
+        <div class="home-card" onclick="showTab('move')"><div class="home-card-icon">🚚</div><div class="home-card-label">재고이동</div><div class="home-card-desc">장소 간 이동</div></div>
+        <div class="home-card" onclick="showTab('search')"><div class="home-card-icon">🔍</div><div class="home-card-label">학생조회</div><div class="home-card-desc">배부이력 확인</div></div>
+      </div>
+      <div class="section-title">오늘의 특이사항</div>
+      <div class="card" id="special-list"><div style="text-align:center;color:#bbb;font-size:13px;padding:12px 0">아직 특이사항이 없어요</div></div>
+    </div>
+
+    <!-- 일괄배부 -->
+    <div id="tab-bulk" class="screen">
+      <div class="alert-box" id="bulk-success">✅ 일괄배부가 저장되었어요!</div>
+      <div class="card">
+        <div class="form-row"><div class="form-label">배부일 <span class="req">필수</span></div><input type="date" class="form-input" id="bulk-date"></div>
+        <div class="form-row"><div class="form-label">반명 (교재명) <span class="req">필수</span></div><select class="form-select" id="bulk-class" onchange="updateBulkInfo()"><option value="">반을 선택하세요</option></select></div>
+        <div class="form-row"><div class="form-label">배부장소 <span class="req">필수</span></div><select class="form-select" id="bulk-place"><option value="">장소를 선택하세요</option><option>창고</option><option>4층지원실</option><option>8층지원실</option></select></div>
+        <div class="form-row"><div class="form-label">학생당 수량 <span class="req">필수</span></div><div class="qty-row"><button class="qty-btn" onclick="changeQty('bulk-qty',-1)">−</button><input type="number" class="qty-val" id="bulk-qty" value="1" min="1"><button class="qty-btn" onclick="changeQty('bulk-qty',1)">+</button></div></div>
+        <div class="form-row" style="margin-bottom:6px"><div class="form-label">담당자 <span class="req">필수</span></div><input type="text" class="form-input" id="bulk-staff" placeholder="이름을 입력하세요"></div>
+        <div class="info-box" id="bulk-count-info">반을 선택하면 대상 학생 수가 표시돼요</div>
+        <button class="save-btn" onclick="saveBulk()">💾 일괄배부 저장</button>
+      </div>
+    </div>
+
+    <!-- 개별배부 -->
+    <div id="tab-indiv" class="screen">
+      <div class="alert-box" id="indiv-success">✅ 개별배부가 저장되었어요!</div>
+      <div class="card">
+        <div class="form-row"><div class="form-label">배부일 <span class="req">필수</span></div><input type="date" class="form-input" id="indiv-date"></div>
+        <div class="form-row">
+          <div class="form-label">학생명 <span class="req">필수</span></div>
+          <div class="search-wrap"><span class="search-icon">🔍</span><input type="text" class="search-input" id="indiv-student-input" placeholder="이름 일부를 입력하세요" oninput="filterStudents('indiv')" autocomplete="off"><div class="dropdown-list" id="indiv-student-dropdown"></div></div>
+          <div class="info-box" id="indiv-student-info" style="margin-top:6px;display:none"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-label">배부반 <span class="req">필수</span> <span style="font-size:11px;color:#aaa">(학생에게 배정된 반만 표시)</span></div>
+          <div class="tags-wrap" id="indiv-class-tags" onclick="showClassPicker()"><span class="tag-placeholder">학생을 먼저 선택하세요</span></div>
+        </div>
+        <div class="form-row"><div class="form-label">배부장소 <span class="req">필수</span></div><select class="form-select" id="indiv-place"><option value="">장소를 선택하세요</option><option>창고</option><option>4층지원실</option><option>8층지원실</option></select></div>
+        <div class="form-row"><div class="form-label">수량 <span class="req">필수</span></div><div class="qty-row"><button class="qty-btn" onclick="changeQty('indiv-qty',-1)">−</button><input type="number" class="qty-val" id="indiv-qty" value="1" min="1"><button class="qty-btn" onclick="changeQty('indiv-qty',1)">+</button></div></div>
+        <div class="form-row">
+          <div class="form-label">특이사항 유형 <span class="req">필수</span></div>
+          <div class="special-box"><select class="form-select" id="special-type" style="background:#fff"><option value="">유형을 선택하세요</option><option>신규</option><option>오배부회수</option><option>여분회수</option><option>기타</option></select></div>
+        </div>
+        <div class="form-row" style="margin-bottom:4px"><div class="form-label">담당자 <span class="req">필수</span></div><input type="text" class="form-input" id="indiv-staff" placeholder="이름을 입력하세요"></div>
+        <button class="save-btn" style="margin-top:14px" onclick="saveIndiv()">💾 개별배부 저장</button>
+      </div>
+    </div>
+
+    <!-- 일괄회수 -->
+    <div id="tab-ret-bulk" class="screen">
+      <div class="alert-box" id="ret-bulk-success">✅ 일괄회수가 저장되었어요!</div>
+      <div class="card">
+        <div class="form-row"><div class="form-label">회수일 <span class="req">필수</span></div><input type="date" class="form-input" id="ret-bulk-date"></div>
+        <div class="form-row"><div class="form-label">원배부일</div><input type="date" class="form-input" id="ret-bulk-orig-date"></div>
+        <div class="form-row"><div class="form-label">반명 <span class="req">필수</span></div><select class="form-select" id="ret-bulk-class"><option value="">반을 선택하세요</option></select></div>
+        <div class="form-row"><div class="form-label">회수장소 <span class="req">필수</span></div><select class="form-select" id="ret-bulk-place"><option value="">장소를 선택하세요</option><option>창고</option><option>4층지원실</option><option>8층지원실</option></select></div>
+        <div class="form-row" style="margin-bottom:4px"><div class="form-label">담당자 <span class="req">필수</span></div><input type="text" class="form-input" id="ret-bulk-staff" placeholder="이름을 입력하세요"></div>
+        <button class="save-btn" style="margin-top:14px" onclick="saveRetBulk()">↩️ 일괄회수 저장</button>
+      </div>
+    </div>
+
+    <!-- 개별회수 -->
+    <div id="tab-ret-indiv" class="screen">
+      <div class="alert-box" id="ret-indiv-success">✅ 개별회수가 저장되었어요!</div>
+      <div class="card">
+        <div class="form-row"><div class="form-label">회수일 <span class="req">필수</span></div><input type="date" class="form-input" id="ret-indiv-date"></div>
+        <div class="form-row">
+          <div class="form-label">학생명 <span class="req">필수</span></div>
+          <div class="search-wrap"><span class="search-icon">🔍</span><input type="text" class="search-input" id="ret-student-input" placeholder="이름 일부를 입력하세요" oninput="filterStudents('ret')" autocomplete="off"><div class="dropdown-list" id="ret-student-dropdown"></div></div>
+        </div>
+        <div class="form-row"><div class="form-label">회수반 <span class="req">필수</span></div><select class="form-select" id="ret-indiv-class"><option value="">학생을 먼저 선택하세요</option></select></div>
+        <div class="form-row"><div class="form-label">회수장소 <span class="req">필수</span></div><select class="form-select" id="ret-indiv-place"><option value="">장소를 선택하세요</option><option>창고</option><option>4층지원실</option><option>8층지원실</option></select></div>
+        <div class="form-row"><div class="form-label">수량 <span class="req">필수</span></div><div class="qty-row"><button class="qty-btn" onclick="changeQty('ret-indiv-qty',-1)">−</button><input type="number" class="qty-val" id="ret-indiv-qty" value="1" min="1"><button class="qty-btn" onclick="changeQty('ret-indiv-qty',1)">+</button></div></div>
+        <div class="form-row"><div class="form-label">회수사유</div><select class="form-select" id="ret-indiv-reason"><option value="">선택 (선택사항)</option><option>오배부회수</option><option>여분회수</option><option>기타</option></select></div>
+        <div class="form-row"><div class="form-label">원배부일</div><input type="date" class="form-input" id="ret-indiv-orig-date"></div>
+        <div class="form-row" style="margin-bottom:4px"><div class="form-label">담당자 <span class="req">필수</span></div><input type="text" class="form-input" id="ret-indiv-staff" placeholder="이름을 입력하세요"></div>
+        <button class="save-btn" style="margin-top:14px" onclick="saveRetIndiv()">↩️ 개별회수 저장</button>
+      </div>
+    </div>
+
+    <!-- 재고이동 -->
+    <div id="tab-move" class="screen">
+      <div class="alert-box" id="move-success">✅ 재고이동이 저장되었어요!</div>
+      <div class="card">
+        <div class="form-row"><div class="form-label">이동일 <span class="req">필수</span></div><input type="date" class="form-input" id="move-date"></div>
+        <div class="form-row"><div class="form-label">교재(반명) <span class="req">필수</span></div><select class="form-select" id="move-class"><option value="">반을 선택하세요</option></select></div>
+        <div class="form-row"><div class="form-label">출발장소 <span class="req">필수</span></div><select class="form-select" id="move-from" onchange="updateArriveOptions()"><option value="">선택</option><option>창고</option><option>4층지원실</option><option>8층지원실</option></select></div>
+        <div style="text-align:center;font-size:22px;margin:2px 0;color:#bbb">↓</div>
+        <div class="form-row"><div class="form-label">도착장소 <span class="req">필수</span></div><select class="form-select" id="move-to"><option value="">출발장소를 먼저 선택하세요</option></select></div>
+        <div class="form-row"><div class="form-label">수량 <span class="req">필수</span></div><div class="qty-row"><button class="qty-btn" onclick="changeQty('move-qty',-1)">−</button><input type="number" class="qty-val" id="move-qty" value="1" min="1"><button class="qty-btn" onclick="changeQty('move-qty',1)">+</button></div></div>
+        <div class="form-row"><div class="form-label">담당자 <span class="req">필수</span></div><input type="text" class="form-input" id="move-staff" placeholder="이름을 입력하세요"></div>
+        <div class="form-row" style="margin-bottom:4px"><div class="form-label">비고</div><input type="text" class="form-input" id="move-memo" placeholder="메모 (선택사항)"></div>
+        <button class="save-btn" style="margin-top:14px" onclick="saveMove()">🚚 재고이동 저장</button>
+      </div>
+    </div>
+
+    <!-- 학생조회 -->
+    <div id="tab-search" class="screen">
+      <div class="card">
+        <div class="form-row">
+          <div class="form-label">학생 이름 검색</div>
+          <div class="search-wrap"><span class="search-icon">🔍</span><input type="text" class="search-input" id="search-student-input" placeholder="이름 일부를 입력하세요" oninput="filterStudents('search')" autocomplete="off"><div class="dropdown-list" id="search-student-dropdown"></div></div>
+        </div>
+        <div class="form-row" style="margin-bottom:4px"><div class="form-label">기준일 (이 날짜까지의 배부이력)</div><input type="date" class="form-input" id="search-date"></div>
+        <button class="save-btn" style="margin-top:10px" onclick="doSearch()">🔍 조회하기</button>
+      </div>
+      <div id="search-result" style="display:none">
+        <div class="section-title" id="search-result-title" style="margin-top:4px"></div>
+        <div id="search-result-list"></div>
+      </div>
+    </div>
+
+    <!-- 관리자 -->
+    <div id="tab-admin" class="screen">
+      <div class="section-title">학생별 배정 반 관리</div>
+      <div style="font-size:12px;color:#888;margin-bottom:12px">여기서 학생과 반을 연결하면 개별배부·회수 시 해당 학생의 반만 표시돼요</div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="admin-table">
+          <thead><tr><th style="padding-left:14px">학생명</th><th>배정된 반</th><th style="width:60px"></th></tr></thead>
+          <tbody id="admin-tbody"></tbody>
+        </table>
+      </div>
+      <button class="save-btn" style="background:#f5f5f5;color:#1a1a1a;border:1px solid #ddd;margin-top:4px" onclick="showAddStudentModal()">+ 학생 추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- 반 선택 모달 (개별배부) -->
+<div id="class-picker-modal" class="modal-wrap">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <span class="modal-title">배부반 선택</span>
+      <button class="modal-close" onclick="closeClassPicker()">✕</button>
+    </div>
+    <div style="font-size:12px;color:#888;margin-bottom:10px" id="picker-student-name"></div>
+    <div id="class-picker-list"></div>
+    <button class="save-btn" style="margin-top:14px" onclick="closeClassPicker()">확인</button>
+  </div>
+</div>
+
+<!-- 관리자 반 편집 모달 -->
+<div id="admin-modal" class="modal-wrap">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <span class="modal-title" id="admin-modal-title">반 배정 편집</span>
+      <button class="modal-close" onclick="closeAdminModal()">✕</button>
+    </div>
+    <div style="font-size:12px;color:#888;margin-bottom:12px">배정할 반을 선택하세요 (여러 개 가능)</div>
+    <div id="admin-class-list"></div>
+    <button class="save-btn" style="margin-top:14px" onclick="saveAdminAssign()">저장</button>
+  </div>
+</div>
+
+<script>
+const TODAY = new Date().toISOString().split('T')[0];
+document.getElementById('today-date').textContent = TODAY;
+['bulk-date','indiv-date','ret-bulk-date','ret-indiv-date','move-date','search-date'].forEach(id => {
+  const el = document.getElementById(id); if (el) el.value = TODAY;
+});
+
+const ALL_CLASSES = [
+  '(강성욱) 사회문화','(강성욱) 정치와 법','(강원휘) 생명과학','(고낙기) 화학',
+  '(국어선택) 언어와매체','(국어선택) 화법과작문','(김종훈) 국어다지기_독서1',
+  '(김종훈) 국어다지기_문학1','(김춘근김희준) pop 1','(김춘근김희준) pop 2',
+  '(김춘근김희준) syntax 1','(김춘근김희준) syntax 2','(이병훈) 지구과학',
+  '국매깨 2-5','국매깨 2-6','수매깨 Q 1-1','(영매깨) 1학기','TEST 교재1'
+];
+
+// ★ 여기에 학생-반 데이터가 저장됩니다 (관리자 탭에서 편집 가능)
+let studentClassMap = {
+  '(5)강연웅2804': ['(강원휘) 생명과학','국매깨 2-5','수매깨 Q 1-1','(이병훈) 지구과학'],
+  '(5)강유찬8685': ['(강성욱) 사회문화','(김춘근김희준) pop 2','(김춘근김희준) syntax 2'],
+  '(5)고강민8799': ['(강성욱) 정치와 법','(고낙기) 화학','(국어선택) 언어와매체'],
+  '(5)김준수3824': ['(강원휘) 생명과학','(김종훈) 국어다지기_독서1'],
+  '(5)김진혁7053': ['국매깨 2-6','(영매깨) 1학기'],
+  '엄선훈': ['TEST 교재1','(강성욱) 사회문화'],
+  '김지유': ['(강성욱) 사회문화','국매깨 2-5'],
+  '박상언': ['국매깨 2-6','(강성욱) 정치와 법'],
+  '이혜진': ['TEST 교재1'],
+  '황수현6530': ['(강성욱) 사회문화','(이병훈) 지구과학'],
+};
+
+let STUDENTS = Object.keys(studentClassMap);
+let selectedIndivClasses = [], currentEditStudent = null, savedRecords = [];
+
+// 셀렉트 채우기
+['bulk-class','ret-bulk-class','move-class'].forEach(id => {
+  const sel = document.getElementById(id); if (!sel) return;
+  ALL_CLASSES.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
+});
+
+// ── 관리자 ──────────────────────────────────
+function renderAdminTable() {
+  STUDENTS = Object.keys(studentClassMap);
+  const tbody = document.getElementById('admin-tbody'); tbody.innerHTML = '';
+  Object.entries(studentClassMap).forEach(([stu, classes]) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td style="padding-left:14px;font-weight:600">${stu}</td><td>${classes.map(c=>`<span class="badge">${c}</span>`).join('') || '<span style="color:#bbb;font-size:12px">배정 없음</span>'}</td><td><button class="admin-edit-btn" onclick="openAdminModal('${stu}')">편집</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+renderAdminTable();
+
+function openAdminModal(stu) {
+  currentEditStudent = stu;
+  document.getElementById('admin-modal-title').textContent = `${stu} — 반 배정`;
+  const list = document.getElementById('admin-class-list'); list.innerHTML = '';
+  const assigned = studentClassMap[stu] || [];
+  ALL_CLASSES.forEach(c => {
+    const checked = assigned.includes(c);
+    const div = document.createElement('div'); div.className = 'check-item';
+    div.innerHTML = `<div class="check-circle ${checked?'checked'}">${checked?'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':''}</div><span class="check-label">${c}</span>`;
+    div.onclick = () => {
+      const cur = studentClassMap[currentEditStudent] || [];
+      studentClassMap[currentEditStudent] = cur.includes(c) ? cur.filter(x=>x!==c) : [...cur, c];
+      openAdminModal(currentEditStudent);
+    };
+    list.appendChild(div);
+  });
+  document.getElementById('admin-modal').style.display = 'flex';
+}
+function closeAdminModal() { document.getElementById('admin-modal').style.display = 'none'; renderAdminTable(); }
+function saveAdminAssign() { closeAdminModal(); }
+function showAddStudentModal() {
+  const name = prompt('추가할 학생 이름을 입력하세요');
+  if (!name || !name.trim()) return;
+  const n = name.trim();
+  if (studentClassMap[n]) { alert('이미 등록된 학생이에요'); return; }
+  studentClassMap[n] = []; renderAdminTable(); openAdminModal(n);
+}
+
+// ── 학생 검색 드롭다운 ──────────────────────
+function filterStudents(ctx) {
+  const map = { indiv:['indiv-student-input','indiv-student-dropdown'], ret:['ret-student-input','ret-student-dropdown'], search:['search-student-input','search-student-dropdown'] };
+  const [inId, ddId] = map[ctx];
+  const val = document.getElementById(inId).value.toLowerCase();
+  const dd = document.getElementById(ddId);
+  if (!val) { dd.classList.remove('show'); return; }
+  const re = new RegExp(val.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');
+  const matches = STUDENTS.filter(s => s.toLowerCase().includes(val));
+  dd.innerHTML = matches.length
+    ? matches.map(s=>`<div class="dropdown-item" onclick="selectStudent('${ctx}','${s}')">${s.replace(re, m=>`<mark>${m}</mark>`)}</div>`).join('')
+    : '<div class="dropdown-item" style="color:#bbb">검색 결과 없음</div>';
+  dd.classList.add('show');
+}
+
+function selectStudent(ctx, name) {
+  if (ctx === 'indiv') {
+    document.getElementById('indiv-student-input').value = name;
+    document.getElementById('indiv-student-dropdown').classList.remove('show');
+    selectedIndivClasses = []; renderClassTags(name);
+    const info = document.getElementById('indiv-student-info');
+    info.textContent = `배정된 반 ${(studentClassMap[name]||[]).length}개 — 아래를 탭해서 선택하세요`;
+    info.style.display = 'block';
+  } else if (ctx === 'ret') {
+    document.getElementById('ret-student-input').value = name;
+    document.getElementById('ret-student-dropdown').classList.remove('show');
+    const sel = document.getElementById('ret-indiv-class');
+    sel.innerHTML = '<option value="">반을 선택하세요</option>';
+    (studentClassMap[name]||[]).forEach(c => { const o = document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o); });
+  } else {
+    document.getElementById('search-student-input').value = name;
+    document.getElementById('search-student-dropdown').classList.remove('show');
+  }
+}
+
+// ── 개별배부 반 태그 ────────────────────────
+function renderClassTags(studentName) {
+  const wrap = document.getElementById('indiv-class-tags'); wrap.innerHTML = '';
+  if (!studentName) { wrap.innerHTML = '<span class="tag-placeholder">학생을 먼저 선택하세요</span>'; return; }
+  if (selectedIndivClasses.length === 0) {
+    wrap.innerHTML = '<span class="tag-placeholder">탭하면 반 선택창이 열려요</span>';
+  } else {
+    selectedIndivClasses.forEach(c => {
+      const tag = document.createElement('span'); tag.className = 'tag';
+      tag.innerHTML = `${c} <span class="tag-x" onclick="removeTag(event,'${c}')">✕</span>`;
+      wrap.appendChild(tag);
+    });
+    const btn = document.createElement('span');
+    btn.style.cssText = 'font-size:13px;color:#185FA5;cursor:pointer;padding:3px 6px;align-self:center';
+    btn.textContent = '+추가'; btn.onclick = e => { e.stopPropagation(); showClassPicker(); };
+    wrap.appendChild(btn);
+  }
+}
+function removeTag(e, c) { e.stopPropagation(); selectedIndivClasses = selectedIndivClasses.filter(x=>x!==c); renderClassTags(document.getElementById('indiv-student-input').value); }
+
+function showClassPicker() {
+  const stu = document.getElementById('indiv-student-input').value;
+  if (!stu) { alert('먼저 학생을 선택해주세요'); return; }
+  const avail = studentClassMap[stu] || [];
+  if (avail.length === 0) { alert('이 학생에게 배정된 반이 없어요.\n관리자 탭에서 반을 배정해주세요.'); return; }
+  document.getElementById('picker-student-name').textContent = `${stu}의 배정된 반`;
+  const list = document.getElementById('class-picker-list'); list.innerHTML = '';
+  avail.forEach(c => {
+    const checked = selectedIndivClasses.includes(c);
+    const div = document.createElement('div'); div.className = 'check-item';
+    div.innerHTML = `<div class="check-circle ${checked?'checked'}">${checked?'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':''}</div><span class="check-label">${c}</span>`;
+    div.onclick = () => { selectedIndivClasses.includes(c) ? selectedIndivClasses=selectedIndivClasses.filter(x=>x!==c) : selectedIndivClasses.push(c); showClassPicker(); };
+    list.appendChild(div);
+  });
+  document.getElementById('class-picker-modal').style.display = 'flex';
+}
+function closeClassPicker() { document.getElementById('class-picker-modal').style.display='none'; renderClassTags(document.getElementById('indiv-student-input').value); }
+
+// ── 공통 유틸 ────────────────────────────────
+function changeQty(id, delta) { const el = document.getElementById(id); el.value = Math.max(1,(parseInt(el.value)||1)+delta); }
+function updateBulkInfo() { const cls = document.getElementById('bulk-class').value; document.getElementById('bulk-count-info').textContent = cls ? `📋 선택한 반: ${cls} — 해당 반 전체 학생에게 배부돼요` : '반을 선택하면 대상 학생 수가 표시돼요'; }
+function updateArriveOptions() { const from=document.getElementById('move-from').value; const to=document.getElementById('move-to'); const opts=['창고','4층지원실','8층지원실'].filter(p=>p!==from); to.innerHTML='<option value="">선택하세요</option>'+opts.map(o=>`<option>${o}</option>`).join(''); }
+function showTab(name) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  ['home','bulk','indiv','ret-bulk','ret-indiv','move','search','admin'].forEach((t,i)=>{ if(t===name) document.querySelectorAll('.nav-btn')[i]?.classList.add('active'); });
+}
+function showSuccess(id) { const el=document.getElementById(id); el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),3000); }
+
+// ── 저장 함수들 ──────────────────────────────
+function saveBulk() {
+  const date=document.getElementById('bulk-date').value, cls=document.getElementById('bulk-class').value, place=document.getElementById('bulk-place').value, qty=document.getElementById('bulk-qty').value, staff=document.getElementById('bulk-staff').value;
+  if (!date||!cls||!place||!staff) { alert('필수 항목을 모두 입력해주세요'); return; }
+  savedRecords.push({type:'일괄배부',date,cls,place,qty,staff}); updateStats(); showSuccess('bulk-success');
+  document.getElementById('bulk-class').value=''; document.getElementById('bulk-place').value=''; document.getElementById('bulk-qty').value='1'; document.getElementById('bulk-staff').value=''; updateBulkInfo();
+}
+function saveIndiv() {
+  const date=document.getElementById('indiv-date').value, student=document.getElementById('indiv-student-input').value, place=document.getElementById('indiv-place').value, qty=document.getElementById('indiv-qty').value, staff=document.getElementById('indiv-staff').value, specialType=document.getElementById('special-type').value;
+  if (!date||!student||selectedIndivClasses.length===0||!place||!staff||!specialType) { alert('필수 항목을 모두 입력해주세요\n(배부반과 특이사항 유형을 확인해주세요)'); return; }
+  const record = {type:'개별배부',date,student,classes:[...selectedIndivClasses],place,qty,staff,specialType};
+  savedRecords.push(record); updateSpecialList(record); updateStats(); showSuccess('indiv-success');
+  document.getElementById('indiv-student-input').value=''; document.getElementById('indiv-student-info').style.display='none'; selectedIndivClasses=[]; renderClassTags(''); document.getElementById('indiv-place').value=''; document.getElementById('indiv-qty').value='1'; document.getElementById('special-type').value=''; document.getElementById('indiv-staff').value='';
+}
+function saveRetBulk() {
+  const date=document.getElementById('ret-bulk-date').value, cls=document.getElementById('ret-bulk-class').value, place=document.getElementById('ret-bulk-place').value, staff=document.getElementById('ret-bulk-staff').value;
+  if (!date||!cls||!place||!staff) { alert('필수 항목을 모두 입력해주세요'); return; }
+  savedRecords.push({type:'일괄회수',date,cls,place,staff}); updateStats(); showSuccess('ret-bulk-success');
+}
+function saveRetIndiv() {
+  const date=document.getElementById('ret-indiv-date').value, student=document.getElementById('ret-student-input').value, cls=document.getElementById('ret-indiv-class').value, place=document.getElementById('ret-indiv-place').value, staff=document.getElementById('ret-indiv-staff').value;
+  if (!date||!student||!place||!staff) { alert('필수 항목을 모두 입력해주세요'); return; }
+  savedRecords.push({type:'개별회수',date,student,cls,place,staff}); updateStats(); showSuccess('ret-indiv-success');
+}
+function saveMove() {
+  const date=document.getElementById('move-date').value, cls=document.getElementById('move-class').value, from=document.getElementById('move-from').value, to=document.getElementById('move-to').value, qty=document.getElementById('move-qty').value, staff=document.getElementById('move-staff').value;
+  if (!date||!cls||!from||!to||!staff) { alert('필수 항목을 모두 입력해주세요'); return; }
+  savedRecords.push({type:'재고이동',date,cls,from,to,qty,staff}); updateStats(); showSuccess('move-success');
+}
+function doSearch() {
+  const student=document.getElementById('search-student-input').value, date=document.getElementById('search-date').value;
+  if (!student) { alert('학생 이름을 입력해주세요'); return; }
+  const results = savedRecords.filter(r=>r.student===student&&r.date<=date&&(r.type==='개별배부'||r.type==='일괄배부'));
+  document.getElementById('search-result-title').textContent = `${student} — ${date}까지 배부 이력 (${results.length}건)`;
+  document.getElementById('search-result-list').innerHTML = results.length
+    ? results.map(r=>`<div class="card" style="margin-bottom:8px"><div style="font-size:13px;font-weight:600">${r.date} · ${r.classes?r.classes.join(', '):r.cls||''}</div><div style="font-size:12px;color:#888;margin-top:4px">${r.type} · ${r.place} · ${r.qty}권${r.specialType?` · <span style="color:#D85A30">⚠ ${r.specialType}</span>`:''}</div></div>`).join('')
+    : '<div class="card" style="text-align:center;color:#bbb;font-size:13px;padding:16px">이 기간에 배부 이력이 없어요</div>';
+  document.getElementById('search-result').style.display = 'block';
+}
+
+function updateStats() {
+  document.getElementById('stat-today').textContent = savedRecords.filter(r=>r.date===TODAY&&(r.type==='일괄배부'||r.type==='개별배부')).length;
+  document.getElementById('stat-special').textContent = savedRecords.filter(r=>r.specialType).length;
+}
+function updateSpecialList(record) {
+  const list = document.getElementById('special-list');
+  if (list.querySelector('[style*="아직"]')) list.innerHTML = '';
+  const item = document.createElement('div'); item.style.cssText='padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:13px';
+  item.innerHTML=`<div style="font-weight:600;color:#1a1a1a">${record.student} <span class="special-badge">⚠ ${record.specialType}</span></div><div style="color:#888;margin-top:3px;font-size:12px">${record.classes?record.classes.join(', '):''} · ${record.date}</div>`;
+  list.appendChild(item);
+}
+
+document.addEventListener('click', e => { if (!e.target.closest('.search-wrap')) document.querySelectorAll('.dropdown-list').forEach(d=>d.classList.remove('show')); });
+</script>
+</body>
+</html>
