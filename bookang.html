@@ -1929,24 +1929,34 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
       }
     }
 
+    // uploadStep 먼저 저장
+    const currentStep = uploadState?.uploadStep || 'default';
+    
     uploadState = {
       headers,
       rows: rows.slice(headerRowIdx + 1).filter(r => r.some(c => String(c).trim())),
       mapping: {}, // colIdx → { type: 'studentName'|'subject'|'ignore', subjectName?: string }
-      uploadStep: uploadState?.uploadStep || 'default'
+      uploadStep: currentStep
     };
+    
+    console.log('=== 파일 업로드 ===');
+    console.log('uploadStep:', uploadState.uploadStep);
 
     // STEP1 업로드는 자동 처리 (컬럼 매칭 불필요)
     if (uploadState.uploadStep === 'step1') {
+      console.log('Step1 자동 처리 시작');
       processStep1Upload();
       return;
     }
 
     // STEP2도 자동 처리!
     if (uploadState.uploadStep === 'step2') {
+      console.log('Step2 자동 처리 시작');
       processStep2Upload();
       return;
     }
+
+    console.log('기본 업로드 - 컬럼 매칭 화면');
 
     // 기본 업로드는 컬럼 매칭 필요
     uploadState.mapping[headers[0].idx] = { type: 'studentName' };
