@@ -1943,11 +1943,32 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
     }
 
     // STEP2 또는 기본 업로드는 컬럼 매칭 필요
-    // 자동 추정: 학생명 컬럼은 보통 첫 번째 텍스트 컬럼
-    uploadState.mapping[headers[0].idx] = { type: 'studentName' };
-    // 나머지는 모두 ignore로 시작
-    for (let i = 1; i < headers.length; i++) {
-      uploadState.mapping[headers[i].idx] = { type: 'ignore' };
+    // 자동 추정
+    const excludeNames = ['성명', '학생email', 'email', '카드번호', '비고', '학년', '반', '학번', '전화번호', '연락처'];
+    
+    // 첫 번째 컬럼 또는 "성명" 컬럼을 학생명으로
+    const studentNameIdx = headers.findIndex(h => h.name === '성명' || h.name.includes('이름'));
+    if (studentNameIdx >= 0) {
+      uploadState.mapping[headers[studentNameIdx].idx] = { type: 'studentName' };
+    } else {
+      uploadState.mapping[headers[0].idx] = { type: 'studentName' };
+    }
+    
+    // 나머지 컬럼 자동 매핑
+    for (let i = 0; i < headers.length; i++) {
+      const h = headers[i];
+      const nameLower = h.name.toLowerCase();
+      
+      // 이미 매핑된 컬럼은 스킵
+      if (uploadState.mapping[h.idx]) continue;
+      
+      // 제외 목록 또는 "강사_"로 시작하면 무시
+      if (excludeNames.some(ex => nameLower.includes(ex)) || h.name.startsWith('강사_')) {
+        uploadState.mapping[h.idx] = { type: 'ignore' };
+      } else {
+        // 나머지는 과목으로 자동 인식!
+        uploadState.mapping[h.idx] = { type: 'subject', subjectName: h.name };
+      }
     }
 
     openColumnMatchModal();
