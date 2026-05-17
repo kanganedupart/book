@@ -1942,6 +1942,9 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
       return;
     }
 
+    console.log('=== 2단계 업로드 자동 매핑 시작 ===');
+    console.log('전체 헤더:', headers.map(h => h.name));
+
     // STEP2 또는 기본 업로드는 컬럼 매칭 필요
     // 자동 추정
     const excludeNames = ['성명', '학생email', 'email', '카드번호', '비고', '학년', '반', '학번', '전화번호', '연락처'];
@@ -1950,8 +1953,10 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
     const studentNameIdx = headers.findIndex(h => h.name === '성명' || h.name.includes('이름'));
     if (studentNameIdx >= 0) {
       uploadState.mapping[headers[studentNameIdx].idx] = { type: 'studentName' };
+      console.log('학생명 컬럼:', headers[studentNameIdx].name);
     } else {
       uploadState.mapping[headers[0].idx] = { type: 'studentName' };
+      console.log('학생명 컬럼 (첫번째):', headers[0].name);
     }
     
     // 나머지 컬럼 자동 매핑
@@ -1960,16 +1965,26 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
       const nameLower = h.name.toLowerCase();
       
       // 이미 매핑된 컬럼은 스킵
-      if (uploadState.mapping[h.idx]) continue;
+      if (uploadState.mapping[h.idx]) {
+        console.log(`${h.name}: 이미 매핑됨 (스킵)`);
+        continue;
+      }
       
       // 제외 목록 또는 "강사_"로 시작하면 무시
-      if (excludeNames.some(ex => nameLower.includes(ex)) || h.name.startsWith('강사_')) {
+      const isExcluded = excludeNames.some(ex => nameLower.includes(ex));
+      const isTeacher = h.name.startsWith('강사_');
+      
+      if (isExcluded || isTeacher) {
         uploadState.mapping[h.idx] = { type: 'ignore' };
+        console.log(`${h.name}: 무시 (제외목록:${isExcluded}, 강사:${isTeacher})`);
       } else {
         // 나머지는 과목으로 자동 인식!
         uploadState.mapping[h.idx] = { type: 'subject', subjectName: h.name };
+        console.log(`${h.name}: 과목으로 자동 선택! ✅`);
       }
     }
+    
+    console.log('최종 매핑:', uploadState.mapping);
 
     openColumnMatchModal();
   } catch (err) {
