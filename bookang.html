@@ -1272,6 +1272,11 @@ function showModal({ title, desc, inputValue, placeholder, hint, warning, confir
   };
 }
 
+// 모든 모달 닫기
+function closeModal() {
+  document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+}
+
 // ---------- Target operations ----------
 function addTarget() {
   showModal({
