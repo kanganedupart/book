@@ -1942,49 +1942,17 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
       return;
     }
 
-    console.log('=== 2단계 업로드 자동 매핑 시작 ===');
-    console.log('전체 헤더:', headers.map(h => h.name));
+    // STEP2도 자동 처리!
+    if (uploadState.uploadStep === 'step2') {
+      processStep2Upload();
+      return;
+    }
 
-    // STEP2 또는 기본 업로드는 컬럼 매칭 필요
-    // 자동 추정
-    const excludeNames = ['성명', '학생email', 'email', '카드번호', '비고', '학년', '반', '학번', '전화번호', '연락처'];
-    
-    // 첫 번째 컬럼 또는 "성명" 컬럼을 학생명으로
-    const studentNameIdx = headers.findIndex(h => h.name === '성명' || h.name.includes('이름'));
-    if (studentNameIdx >= 0) {
-      uploadState.mapping[headers[studentNameIdx].idx] = { type: 'studentName' };
-      console.log('학생명 컬럼:', headers[studentNameIdx].name);
-    } else {
-      uploadState.mapping[headers[0].idx] = { type: 'studentName' };
-      console.log('학생명 컬럼 (첫번째):', headers[0].name);
+    // 기본 업로드는 컬럼 매칭 필요
+    uploadState.mapping[headers[0].idx] = { type: 'studentName' };
+    for (let i = 1; i < headers.length; i++) {
+      uploadState.mapping[headers[i].idx] = { type: 'ignore' };
     }
-    
-    // 나머지 컬럼 자동 매핑
-    for (let i = 0; i < headers.length; i++) {
-      const h = headers[i];
-      const nameLower = h.name.toLowerCase();
-      
-      // 이미 매핑된 컬럼은 스킵
-      if (uploadState.mapping[h.idx]) {
-        console.log(`${h.name}: 이미 매핑됨 (스킵)`);
-        continue;
-      }
-      
-      // 제외 목록 또는 "강사_"로 시작하면 무시
-      const isExcluded = excludeNames.some(ex => nameLower.includes(ex));
-      const isTeacher = h.name.startsWith('강사_');
-      
-      if (isExcluded || isTeacher) {
-        uploadState.mapping[h.idx] = { type: 'ignore' };
-        console.log(`${h.name}: 무시 (제외목록:${isExcluded}, 강사:${isTeacher})`);
-      } else {
-        // 나머지는 과목으로 자동 인식!
-        uploadState.mapping[h.idx] = { type: 'subject', subjectName: h.name };
-        console.log(`${h.name}: 과목으로 자동 선택! ✅`);
-      }
-    }
-    
-    console.log('최종 매핑:', uploadState.mapping);
 
     openColumnMatchModal();
   } catch (err) {
@@ -2328,6 +2296,163 @@ function processStep1Upload() {
   } catch (error) {
     console.error('processStep1Upload 에러:', error);
     toast('1단계 엑셀 처리 중 오류 발생: ' + error.message, true);
+  }
+}
+
+function processStep2Upload() {
+  // STEP2: 학생 명단 자동 업로드
+  // 컬럼명 = 과목명, 값 = 반명 (강사 포함)
+  
+  try {
+    const td = getCurrentTargetData();
+    const rows = uploadState.rows;
+    const headers = uploadState.headers;
+    
+    if (!rows || rows.length === 0) {
+      toast('엑셀에 데이터가 없습니다', true);
+      return;
+    }
+    
+    console.log('=== Step2 자동 업로드 시작 ===');
+    console.log('헤더:', headers.map(h => h.name));
+    
+    // 1. 학생명 컬럼 찾기
+    const studentNameIdx = headers.findIndex(h => h.name === '성명' || h.name.includes('이름'));
+    if (studentNameIdx === -1) {
+      toast('엑셀에 "성명" 컬럼이 필요합니다', true);
+      return;
+    }
+    
+    // 2. 과목 컬럼 자동 인식
+    const excludeNames = ['성명', '학생email', 'email', '카드번호', '비고', '학년', '반', '학번', '전화번호', '연락처'];
+    const subjectCols = [];
+    
+    headers.forEach((h, idx) => {
+      const nameLower = h.name.toLowerCase();
+      
+      // 제외 목록 또는 "강사_"로 시작하면 스킵
+      const isExcluded = excludeNames.some(ex => nameLower.includes(ex));
+      const isTeacher = h.name.startsWith('강사_');
+      
+      if (!isExcluded && !isTeacher && idx !== studentNameIdx) {
+        subjectCols.push({
+          idx: idx,
+          subject: h.name
+        });
+        console.log(`과목 컬럼: ${h.name} (${idx})`);
+      }
+    });
+    
+    if (subjectCols.length === 0) {
+      toast('과목 컬럼을 찾을 수 없습니다', true);
+      return;
+    }
+    
+    // 3. 반 정보 수집
+    const classMap = {}; // key: subject||className → { subject, className, teacher }
+    
+    rows.forEach(row => {
+      subjectCols.forEach(sc => {
+        const cellValue = String(row[sc.idx] || '').trim();
+        if (!cellValue) return;
+        
+        // 반명 그대로 사용
+        const className = cellValue;
+        
+        // 강사 추출 (마지막 단어)
+        const parts = className.split(/\s+/);
+        const teacher = parts.length > 0 ? parts[parts.length - 1] : '';
+        
+        const key = `${sc.subject}||${className}`;
+        if (!classMap[key]) {
+          classMap[key] = {
+            subject: sc.subject,
+            className: className,
+            teacher: teacher
+          };
+        }
+      });
+    });
+    
+    console.log('수집된 반:', Object.keys(classMap).length);
+    
+    // 4. 반 생성
+    let newClasses = 0;
+    Object.values(classMap).forEach(item => {
+      let cls = td.classes.find(c => 
+        c.subject === item.subject && 
+        c.className === item.className
+      );
+      
+      if (!cls) {
+        cls = {
+          id: uid('c'),
+          subject: item.subject,
+          teacher: item.teacher,
+          className: item.className,
+          bookIds: [],
+          createdAt: new Date().toISOString()
+        };
+        td.classes.push(cls);
+        newClasses++;
+        console.log(`반 생성: ${item.subject} / ${item.className} / ${item.teacher}`);
+      }
+      
+      // 강사 디렉토리에 추가
+      if (item.teacher) ensureTeacherInDirectory(item.teacher);
+    });
+    
+    // 5. 학생 생성 및 반 배정
+    let newStudents = 0;
+    let updatedStudents = 0;
+    
+    rows.forEach(row => {
+      const studentName = String(row[studentNameIdx] || '').trim();
+      if (!studentName) return;
+      
+      // 학생 찾기 또는 생성
+      let student = td.students.find(s => s.name === studentName);
+      
+      if (!student) {
+        student = {
+          id: uid('s'),
+          name: studentName,
+          classIds: [],
+          createdAt: new Date().toISOString()
+        };
+        td.students.push(student);
+        newStudents++;
+      } else {
+        updatedStudents++;
+      }
+      
+      // 각 과목의 반에 배정
+      subjectCols.forEach(sc => {
+        const cellValue = String(row[sc.idx] || '').trim();
+        if (!cellValue) return;
+        
+        const className = cellValue;
+        
+        // 반 찾기
+        const cls = td.classes.find(c => 
+          c.subject === sc.subject && 
+          c.className === className
+        );
+        
+        if (cls && !student.classIds.includes(cls.id)) {
+          student.classIds.push(cls.id);
+        }
+      });
+    });
+    
+    saveData();
+    uploadState = { uploadStep: 'default' }; // 초기화
+    toast(`✅ ${newClasses}개 반, ${newStudents}명 신규 학생, ${updatedStudents}명 업데이트 완료!`, false);
+    render();
+    
+  } catch (error) {
+    console.error('processStep2Upload 에러:', error);
+    toast('2단계 엑셀 처리 중 오류 발생: ' + error.message, true);
   }
 }
 
