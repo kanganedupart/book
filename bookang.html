@@ -2149,34 +2149,7 @@ function openTeacherAssignModal() {
     .filter(([k,m]) => m.type === 'subject')
     .map(([k,m]) => ({ colIdx: +k, subjectName: m.subjectName }));
 
-  // 3. 모든 반명 추출 (과목별로) - 반명 그대로 사용
-  const classBucket = {}; // key: subjectName + '||' + className → { subject, className, count }
-  uploadState.rows.forEach(row => {
-    subjectCols.forEach(sc => {
-      const className = String(row[sc.colIdx] || '').trim();
-      if (!className) return;
-      
-      const key = sc.subjectName + '||' + className;
-      if (!classBucket[key]) {
-        classBucket[key] = { subject: sc.subjectName, className, count: 0 };
-      }
-      classBucket[key].count++;
-    });
-  });
 
-  const classes = Object.values(classBucket).sort((a, b) => {
-    if (a.subject !== b.subject) return a.subject.localeCompare(b.subject);
-    return a.className.localeCompare(b.className);
-  });
-
-  uploadState.classList = classes;
-  // 강사 기본값 채움: 반명에서 강사명 추출 (마지막 단어)
-  classes.forEach(c => {
-    if (c.teacher !== undefined) return;
-    const parts = c.className.split(/\s+/);
-    const teacherName = parts.length > 0 ? parts[parts.length - 1] : '';
-    c.teacher = teacherName;
-    c.isSuggested = !!teacherName;
   });
 
   renderTeacherAssignModal();
